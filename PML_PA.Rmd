@@ -1,0 +1,85 @@
+---
+title: "Wearable Devices - Predicting effectiveness of excercise type"
+author: "M.Siva"
+date: "December 3, 2017"
+output: html_document
+---  
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(2017)
+```
+##Overview
+A group of health concious enthusiast, use wearable devices like Nike FuelBand, Fitbit etc., to track and collect the data of thier different exercise fashions. They use data collected by these devices, to know the qunatum of exercise done for imporving their health rather.
+However, we want to analyse the data using machine learning techiniques like Decision Tree, Random Forest etc., to predict, how well these exercise can be done.  
+
+##Data Exploration & Cleaning    
+We use Weight Lifting Exercise Datasets(Training and Testing) from this site [http://groupware.les.inf.puc-rio.br/har]. These datasets contains measurements of 6 participants for five different exercise fashions(Class A:exactly according to the specification;  Class B: throwing the elbows to the front; Class C: lifting the dumbbell only halfway; Class D: lowering the dumbbell only halfway; Class E: and throwing the hips to the front) collected by accelorometers placed on the belt, forearm, arm, and dumbell of the 6 participants.  
+Class A: Exercise done in correct fashion as per Trainer's instructions  
+Class B to Class E: Exercise done in wrong fashion  
+
+
+```{r echo = TRUE}
+# Load all needed packages
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+library(randomForest)
+
+```
+Load the Training and Testing datasets. Use only needed variables and exclude any NULL values.  
+  
+```{r echo=TRUE}  
+source_training <- read.csv("./data/pml-training.csv", na.strings=c("NA","#DIV/0!",""))
+source_testing  <- read.csv("./data/pml-testing.csv",  na.strings=c("NA","#DIV/0!",""))
+features <- names(source_training[,colSums(is.na(source_training)) == 0])[8:59]
+clean_training<-source_training[,c(features,"classe")]
+clean_testing <-source_testing[,c(features,"problem_id")]
+dim(clean_training)
+dim(clean_testing)
+```  
+##Partition  the Cleaned Training Dataset  
+Partiion the Cleaned Training Dataset on ClassE variable into Training and Testing datasets in the ratio of 60/40. Estimate the out of the sample error.
+**Note: Do not use Cleaned Testing Dataset during model building process, it should be used only once after selecting the model**  
+```{r echo=TRUE}  
+#set.seed(2017)
+inTrain <- createDataPartition(clean_training$classe, p = 0.6, list = FALSE)
+training<-clean_training[inTrain,]
+testing<- clean_training[-inTrain,]
+dim(training); dim(testing)
+```  
+
+##Build Predction Model
+###Decision Tree Model
+```{r echo = TRUE}
+#set.seed(2017)
+fitDTModel <- rpart(classe ~ ., data = training, method = "class")
+fancyRpartPlot(fitDTModel, cex=0.01)
+
+predDTModel<-predict(fitDTModel, testing, type = "class")
+confusionMatrix(predDTModel, testing$classe)
+```  
+
+###Random Forest Model
+```{r echo=TRUE}
+#set.seed(2017)
+fitRFModel <- randomForest(classe ~ ., data = training)
+
+
+predRFModel<-predict(fitRFModel, testing, type = "class")
+confusionMatrix(predRFModel, testing$classe)
+```  
+
+##Select Prediction Model & Apply to Test Dataset (pml-testing.csv)
+After reviewing the results of Confusion Matrix, we notice that Random Forest Model has a better accuray of 99.5% than Decision Tree Model of 74.5% accuracy. So we apply the Random Forest Model to predict the outcome for original testing dataset (We use cleaned testing dataset of clean_testing)  
+ 
+###Random Forest Model
+```{r echo=TRUE}
+predRFModelFinal <- predict(fitRFModel, clean_testing, type = "class")
+predRFModelFinal
+```  
+##Conclusion
+**From the above analysis, we may conclude that Random Forest Model predicts a more accurate outcome over Decesion Tree Model.**  
+
